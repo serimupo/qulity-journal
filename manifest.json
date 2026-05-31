@@ -1,0 +1,24 @@
+{
+  "name": "PPC 입고 품질 일지",
+  "short_name": "품질일지",
+  "description": "배민B마트 PPC 입고 품질 기록 앱",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7F8FA",
+  "theme_color": "#1D9E75",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

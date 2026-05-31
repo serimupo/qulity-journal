@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PPC 입고 품질 일지</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1D9E75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="품질일지">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --teal: #1D9E75; --teal-dark: #0F6E56; --teal-light: #E1F5EE; --teal-text: #085041;
+    --bg: #F7F8FA; --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08); --border-med: rgba(0,0,0,0.14);
+    --text: #1A1A1A; --text-secondary: #6B7280; --text-hint: #9CA3AF;
+    --danger-bg: #FEF2F2; --danger-text: #991B1B;
+    --warning-bg: #FFFBEB; --warning-text: #92400E;
+    --success-bg: #F0FDF4; --success-text: #166534;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 15px; line-height: 1.6; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 16px; position: sticky; top: 0; z-index: 100;
+    padding-top: env(safe-area-inset-top);
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between; height: 52px;
+  }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo-dot {
+    width: 30px; height: 30px; background: var(--teal); border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .logo-dot svg { width: 17px; height: 17px; fill: white; }
+  .logo-text { font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .logo-sub { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
+  .header-actions { display: flex; gap: 6px; }
+  .btn-icon {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+    cursor: pointer; color: var(--text-secondary); font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-icon:active { background: #e8e8e8; }
+  nav {
+    background: var(--surface); border-top: 1px solid var(--border);
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-inner { display: flex; height: 56px; }
+  .nav-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; font-size: 10px; font-weight: 500;
+    cursor: pointer; border: none; background: none; color: var(--text-hint);
+    transition: color 0.15s; font-family: 'Noto Sans KR', sans-serif;
+    -webkit-tap-highlight-color: transparent; padding: 6px 4px;
+  }
+  .nav-tab svg { width: 22px; height: 22px; }
+  .nav-tab.active { color: var(--teal); }
+  main { padding: 16px 16px calc(72px + env(safe-area-inset-bottom)); }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+  .field input, .field select, .field textarea {
+    font-family: 'Noto Sans KR', sans-serif; font-size: 16px;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+    padding: 10px 12px; outline: none; transition: border-color 0.15s;
+    width: 100%; -webkit-appearance: none; appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--teal); box-shadow: 0 0 0 3px rgba(29,158,117,0.12);
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .select-wrapper { position: relative; }
+  .select-wrapper select { padding-right: 30px; cursor: pointer; }
+  .select-wrapper::after {
+    content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid var(--text-secondary); pointer-events: none;
+  }
+  .custom-input-row { display: flex; gap: 6px; margin-top: 6px; }
+  .custom-input-row input {
+    flex: 1; font-family: 'Noto Sans KR', sans-serif; font-size: 15px;
+    color: var(--text); background: var(--bg); border: 1px solid var(--border-med);
+    border-radius: var(--radius-sm); padding: 8px 10px; outline: none;
+  }
+  .custom-input-row input:focus { border-color: var(--teal); background: white; }
+  .custom-input-row button {
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    background: var(--teal-light); color: var(--teal-text);
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .photo-upload-area {
+    border: 1.5px dashed var(--border-med); border-radius: var(--radius-sm);
+    padding: 20px 16px; text-align: center; cursor: pointer; position: relative;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .photo-upload-area:active { background: var(--teal-light); border-color: var(--teal); }
+  .photo-upload-area input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .photo-upload-area p { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+  .photo-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .photo-thumb {
+    position: relative; width: 80px; height: 80px;
+    border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border);
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb button {
+    position: absolute; top: 3px; right: 3px; width: 20px; height: 20px;
+    background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%;
+    font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-primary {
+    width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+    background: var(--teal); color: white; border: none; border-radius: var(--radius-sm);
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif; margin-top: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary:active { background: var(--teal-dark); }
+  .btn-secondary {
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    background: var(--surface); color: var(--text-secondary);
+    border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-secondary:active { background: var(--bg); }
+  .btn-danger {
+    padding: 6px 10px; font-size: 14px; background: none; color: var(--text-hint);
+    border: none; cursor: pointer; border-radius: var(--radius-sm);
+    font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent;
+    min-width: 36px; min-height: 36px; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-danger:active { background: var(--danger-bg); color: var(--danger-text); }
+  .search-bar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .search-bar input {
+    font-family: 'Noto Sans KR', sans-serif; font-size: 16px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border-med);
+    border-radius: var(--radius-sm); padding: 10px 12px; outline: none;
+    width: 100%; -webkit-appearance: none; appearance: none;
+  }
+  .search-bar input:focus { border-color: var(--teal); }
+  .search-select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filter-select {
+    font-family: 'Noto Sans KR', sans-serif; font-size: 15px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border-med);
+    border-radius: var(--radius-sm); padding: 10px 28px 10px 12px;
+    width: 100%; -webkit-appearance: none; appearance: none; outline: none;
+  }
+  .filter-select:focus { border-color: var(--teal); }
+  .date-row { display: flex; align-items: center; gap: 6px; }
+  .date-row input {
+    flex: 1; font-family: 'Noto Sans KR', sans-serif; font-size: 15px;
+    border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+    padding: 10px 10px; outline: none; -webkit-appearance: none; appearance: none;
+    color: var(--text); background: var(--surface);
+  }
+  .date-row span { font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
+  .record-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow);
+  }
+  .record-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .record-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .record-date { font-size: 12px; color: var(--text-secondary); }
+  .record-product { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .badge {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 500;
+    padding: 3px 8px; border-radius: 99px; white-space: nowrap;
+  }
+  .badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning-text); }
+  .badge-teal { background: var(--teal-light); color: var(--teal-text); }
+  .badge-gray { background: #F3F4F6; color: #374151; }
+  .record-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+  .record-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .record-photo {
+    width: 70px; height: 70px; border-radius: var(--radius-sm);
+    object-fit: cover; border: 1px solid var(--border); cursor: pointer;
+  }
+  .record-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; text-align: center; box-shadow: var(--shadow);
+  }
+  .metric-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-value { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; }
+  .metric-sub { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+  }
+  .chart-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-hint); font-size: 14px; }
+  .empty-state svg { width: 40px; height: 40px; margin: 0 auto 12px; display: block; opacity: 0.3; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-header-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9); z-index: 999; align-items: center; justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 95vw; max-height: 90vh; border-radius: var(--radius); }
+  .lightbox-close {
+    position: fixed; top: 16px; right: 16px;
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    width: 44px; height: 44px; border-radius: 50%; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* PWA 설치 배너 */
+  #install-banner {
+    display: none; position: fixed; bottom: 72px; left: 12px; right: 12px;
+    background: var(--text); color: white; border-radius: var(--radius);
+    padding: 14px 16px; z-index: 200;
+    flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  #install-banner.show { display: flex; }
+  #install-banner p { font-size: 13px; line-height: 1.5; flex: 1; }
+  #install-banner .banner-btns { display: flex; gap: 8px; flex-shrink: 0; }
+  #install-banner button {
+    padding: 7px 14px; font-size: 13px; font-weight: 500; border-radius: var(--radius-sm);
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif; border: none;
+  }
+  .banner-install { background: var(--teal); color: white; }
+  .banner-dismiss { background: rgba(255,255,255,0.15); color: white; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot">
+        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">PPC 품질 일지</div>
+        <div class="logo-sub">배민B마트 커머스품질관리팀 준비</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="exportData()" title="내보내기">↑</button>
+      <button class="btn-icon" onclick="importData()" title="가져오기">↓</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- 입고 기록 -->
+  <div id="section-record" class="section active">
+    <div class="card">
+      <div class="card-title">새 입고 기록</div>
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="field">
+          <label>날짜</label>
+          <input type="date" id="r-date">
+        </div>
+        <div class="field">
+          <label>제품명</label>
+          <input type="text" id="r-product" placeholder="예: 로메인 상추">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="field">
+          <label>카테고리</label>
+          <div class="select-wrapper">
+            <select id="r-category">
+              <option value="">선택</option>
+              <option>엽채류</option><option>과채류</option><option>과일</option>
+              <option>육류</option><option>수산물</option><option>유제품</option>
+              <option>가공식품</option><option>PB상품</option><option>기타</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>불량 유형</label>
+          <div class="select-wrapper">
+            <select id="r-defect" onchange="toggleCustom('r-defect','custom-defect-row')">
+              <option value="">선택</option>
+              <option>선도저하</option><option>변질/변색</option><option>포장 불량</option>
+              <option>무름/손상</option><option>이물질</option><option>유통기한 임박</option>
+              <option>파괴검품</option><option>기준미달 기타</option>
+              <option value="__custom__">✏️ 직접 입력...</option>
+            </select>
+          </div>
+          <div class="custom-input-row" id="custom-defect-row" style="display:none;">
+            <input type="text" id="custom-defect-input" placeholder="불량 유형 입력">
+            <button onclick="addCustomOption('r-defect','custom-defect-input','custom-defect-row')">추가</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="field">
+          <label>추정 원인</label>
+          <div class="select-wrapper">
+            <select id="r-cause" onchange="toggleCustom('r-cause','custom-cause-row')">
+              <option value="">선택</option>
+              <option>운송 중 온도 관리</option><option>포장 방식 문제</option>
+              <option>거래처 기준 미흡</option><option>입고 지연</option>
+              <option>계절/날씨 영향</option><option>원인 불명</option>
+              <option value="__custom__">✏️ 직접 입력...</option>
+            </select>
+          </div>
+          <div class="custom-input-row" id="custom-cause-row" style="display:none;">
+            <input type="text" id="custom-cause-input" placeholder="원인 입력">
+            <button onclick="addCustomOption('r-cause','custom-cause-input','custom-cause-row')">추가</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>조치 내용</label>
+          <div class="select-wrapper">
+            <select id="r-action">
+              <option value="">선택</option>
+              <option>회송 처리</option><option>현장 폐기</option>
+              <option>담당자 보고</option><option>유관부서 공유</option>
+              <option>재검수 후 입고</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-grid-3" style="margin-bottom:10px;">
+        <div class="field">
+          <label>전체 수량</label>
+          <input type="number" id="r-total" placeholder="50" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>불량 수량</label>
+          <input type="number" id="r-defect-count" placeholder="3" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>불량률</label>
+          <input type="text" id="r-rate-display" readonly placeholder="자동" style="background:#f9fafb;color:var(--text-secondary);">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>판단 근거 / 특이사항</label>
+        <textarea id="r-memo" placeholder="예: 잎 끝 갈변, 냄새 이상 없으나 시각적 선도 기준 미달. 동일 거래처 3회 연속."></textarea>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>사진 첨부</label>
+        <div class="photo-upload-area">
+          <input type="file" accept="image/*" multiple onchange="handlePhotoUpload(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.5" style="width:30px;height:30px;display:block;margin:0 auto 6px;"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 20M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <p>탭하여 사진 첨부 (여러 장 가능)</p>
+        </div>
+        <div class="photo-previews" id="photo-previews"></div>
+      </div>
+      <button class="btn-primary" onclick="addRecord()">기록 저장</button>
+    </div>
+    <div class="section-header">
+      <span class="section-header-title">최근 기록</span>
+      <span id="record-count" style="font-size:12px;color:var(--text-hint);"></span>
+    </div>
+    <div id="record-list"></div>
+  </div>
+
+  <!-- 찾기 -->
+  <div id="section-search" class="section">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-title">검색 / 필터</div>
+      <div class="search-bar">
+        <input type="text" id="search-keyword" placeholder="제품명, 메모 키워드 검색..." oninput="renderSearch()">
+        <div class="search-select-row">
+          <div class="select-wrapper">
+            <select id="search-category" class="filter-select" onchange="renderSearch()">
+              <option value="">전체 카테고리</option>
+              <option>엽채류</option><option>과채류</option><option>과일</option>
+              <option>육류</option><option>수산물</option><option>유제품</option>
+              <option>가공식품</option><option>PB상품</option><option>기타</option>
+            </select>
+          </div>
+          <div class="select-wrapper">
+            <select id="search-defect" class="filter-select" onchange="renderSearch()">
+              <option value="">전체 불량 유형</option>
+            </select>
+          </div>
+        </div>
+        <div class="select-wrapper">
+          <select id="search-cause" class="filter-select" onchange="renderSearch()">
+            <option value="">전체 추정 원인</option>
+          </select>
+        </div>
+        <div class="date-row">
+          <input type="date" id="search-from" onchange="renderSearch()">
+          <span>~</span>
+          <input type="date" id="search-to" onchange="renderSearch()">
+          <button class="btn-secondary" onclick="clearSearch()">초기화</button>
+        </div>
+      </div>
+    </div>
+    <div id="search-summary" style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;"></div>
+    <div id="search-list"></div>
+  </div>
+
+  <!-- 통계 -->
+  <div id="section-stats" class="section">
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">총 기록</div>
+        <div class="metric-value" id="stat-total">0</div>
+        <div class="metric-sub">건</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">총 불량</div>
+        <div class="metric-value" id="stat-defects">0</div>
+        <div class="metric-sub">개</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">평균 불량률</div>
+        <div class="metric-value" id="stat-rate">0%</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">최다 불량</div>
+        <div class="metric-value" id="stat-top" style="font-size:13px;padding-top:6px;">-</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">카테고리별 불량 건수</div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="chart-category" role="img" aria-label="카테고리별 불량 건수">데이터 없음</canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">불량 유형 분포</div>
+      <div style="position:relative;width:100%;height:220px;">
+        <canvas id="chart-defect" role="img" aria-label="불량 유형 분포">데이터 없음</canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">추정 원인 분포</div>
+      <div id="cause-chart-wrap" style="position:relative;width:100%;height:200px;">
+        <canvas id="chart-cause" role="img" aria-label="추정 원인 분포">데이터 없음</canvas>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<nav>
+  <div class="nav-inner">
+    <button class="nav-tab active" onclick="switchTab('record', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      입고기록
+    </button>
+    <button class="nav-tab" onclick="switchTab('search', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      찾기
+    </button>
+    <button class="nav-tab" onclick="switchTab('stats', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      통계
+    </button>
+  </div>
+</nav>
+
+<!-- PWA 설치 배너 -->
+<div id="install-banner">
+  <p>홈 화면에 앱으로 추가하면<br>오프라인에서도 사용할 수 있어요!</p>
+  <div class="banner-btns">
+    <button class="banner-install" onclick="installPWA()">추가</button>
+    <button class="banner-dismiss" onclick="dismissBanner()">닫기</button>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+// PWA Service Worker 등록
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// PWA 설치 프롬프트
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('pwa-dismissed')) {
+    document.getElementById('install-banner').classList.add('show');
+  }
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('install-banner').classList.remove('show');
+  });
+}
+
+function dismissBanner() {
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem('pwa-dismissed', '1');
+}
+
+// 앱 데이터
+let records = [];
+let pendingPhotos = [];
+let catChart = null, defChart = null, causeChart = null;
+
+function init() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('r-date').value = today;
+  const saved = localStorage.getItem('ppc_records_v2');
+  if (saved) { try { records = JSON.parse(saved); } catch(e) { records = []; } }
+  renderRecords();
+  updateFilterOptions();
+  document.getElementById('r-total').addEventListener('input', updateRateDisplay);
+  document.getElementById('r-defect-count').addEventListener('input', updateRateDisplay);
+}
+
+function save() { localStorage.setItem('ppc_records_v2', JSON.stringify(records)); }
+
+function updateRateDisplay() {
+  const t = parseInt(document.getElementById('r-total').value) || 0;
+  const d = parseInt(document.getElementById('r-defect-count').value) || 0;
+  document.getElementById('r-rate-display').value = t > 0 ? Math.round(d / t * 100) + '%' : '';
+}
+
+function toggleCustom(selectId, rowId) {
+  document.getElementById(rowId).style.display =
+    document.getElementById(selectId).value === '__custom__' ? 'flex' : 'none';
+}
+
+function addCustomOption(selectId, inputId, rowId) {
+  const sel = document.getElementById(selectId);
+  const val = document.getElementById(inputId).value.trim();
+  if (!val) return;
+  if (!Array.from(sel.options).some(o => o.value === val)) {
+    sel.insertBefore(new Option(val, val), sel.querySelector('option[value="__custom__"]'));
+  }
+  sel.value = val;
+  document.getElementById(inputId).value = '';
+  document.getElementById(rowId).style.display = 'none';
+}
+
+function handlePhotoUpload(e) {
+  Array.from(e.target.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => { pendingPhotos.push(ev.target.result); renderPhotoPreviews(); };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderPhotoPreviews() {
+  document.getElementById('photo-previews').innerHTML = pendingPhotos.map((src, i) =>
+    `<div class="photo-thumb"><img src="${src}" alt="첨부 사진"><button onclick="removePhoto(${i})">✕</button></div>`
+  ).join('');
+}
+
+function removePhoto(i) { pendingPhotos.splice(i, 1); renderPhotoPreviews(); }
+
+function addRecord() {
+  const date = document.getElementById('r-date').value;
+  const product = document.getElementById('r-product').value.trim();
+  const category = document.getElementById('r-category').value;
+  const defect = document.getElementById('r-defect').value;
+  const cause = document.getElementById('r-cause').value;
+  const total = parseInt(document.getElementById('r-total').value) || 0;
+  const defectCount = parseInt(document.getElementById('r-defect-count').value) || 0;
+  const action = document.getElementById('r-action').value;
+  const memo = document.getElementById('r-memo').value.trim();
+  if (!date || !category || !defect) { alert('날짜, 카테고리, 불량 유형은 필수입니다.'); return; }
+  records.unshift({ id: Date.now(), date, product, category, defect,
+    cause: cause === '__custom__' ? '' : cause,
+    total, defectCount, action, memo, photos: [...pendingPhotos] });
+  save(); pendingPhotos = []; renderPhotoPreviews(); renderRecords(); updateFilterOptions();
+  ['r-product','r-category','r-defect','r-cause','r-total','r-defect-count','r-rate-display','r-action','r-memo']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+  ['custom-defect-row','custom-cause-row'].forEach(id => document.getElementById(id).style.display = 'none');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteRecord(id) {
+  if (!confirm('이 기록을 삭제하시겠어요?')) return;
+  records = records.filter(r => r.id !== id);
+  save(); renderRecords(); renderSearch();
+}
+
+function renderRecordCard(r) {
+  const rate = r.total > 0 ? Math.round(r.defectCount / r.total * 100) : 0;
+  const bc = rate > 10 ? 'badge-danger' : rate > 5 ? 'badge-warning' : rate > 0 ? 'badge-teal' : 'badge-gray';
+  const photos = (r.photos||[]).map(src => `<img class="record-photo" src="${src}" alt="불량 사진" onclick="openLightbox('${src}')">`).join('');
+  return `<div class="record-card">
+    <div class="record-header">
+      <div style="flex:1;min-width:0;">
+        <div class="record-meta">
+          <span class="record-date">${r.date}</span>
+          <span class="badge badge-gray">${r.category}</span>
+          <span class="badge ${bc}">${r.defect}</span>
+        </div>
+        ${r.product ? `<div class="record-product">${r.product}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:8px;">
+        ${r.total > 0 ? `<span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${r.defectCount}/${r.total}개<br>(${rate}%)</span>` : ''}
+        <button class="btn-danger" onclick="deleteRecord(${r.id})" aria-label="삭제">✕</button>
+      </div>
+    </div>
+    ${r.cause || r.action ? `<hr class="record-divider"><div class="record-body">${r.cause ? `<span style="color:var(--text-hint);">원인</span> ${r.cause}` : ''}${r.cause && r.action ? ' · ' : ''}${r.action ? `<span style="color:var(--text-hint);">조치</span> ${r.action}` : ''}</div>` : ''}
+    ${r.memo ? `<div class="record-body" style="margin-top:6px;">${r.memo}</div>` : ''}
+    ${photos ? `<div class="record-photos">${photos}</div>` : ''}
+  </div>`;
+}
+
+function renderRecords() {
+  const list = document.getElementById('record-list');
+  document.getElementById('record-count').textContent = `총 ${records.length}건`;
+  list.innerHTML = records.length === 0
+    ? `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>아직 기록이 없어요. 오늘 입고 기록을 추가해보세요!</div>`
+    : records.slice(0, 30).map(renderRecordCard).join('');
+}
+
+function updateFilterOptions() {
+  const defects = [...new Set(records.map(r => r.defect).filter(Boolean))];
+  const causes = [...new Set(records.map(r => r.cause).filter(Boolean))];
+  const sd = document.getElementById('search-defect'), sdv = sd.value;
+  sd.innerHTML = '<option value="">전체 불량 유형</option>' + defects.map(d => `<option>${d}</option>`).join('');
+  if (sdv) sd.value = sdv;
+  const sc = document.getElementById('search-cause'), scv = sc.value;
+  sc.innerHTML = '<option value="">전체 추정 원인</option>' + causes.map(c => `<option>${c}</option>`).join('');
+  if (scv) sc.value = scv;
+}
+
+function renderSearch() {
+  const kw = document.getElementById('search-keyword').value.toLowerCase();
+  const cat = document.getElementById('search-category').value;
+  const def = document.getElementById('search-defect').value;
+  const cause = document.getElementById('search-cause').value;
+  const from = document.getElementById('search-from').value;
+  const to = document.getElementById('search-to').value;
+  const filtered = records.filter(r => {
+    if (kw && !((r.product||'').toLowerCase().includes(kw)||(r.memo||'').toLowerCase().includes(kw))) return false;
+    if (cat && r.category !== cat) return false;
+    if (def && r.defect !== def) return false;
+    if (cause && r.cause !== cause) return false;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    return true;
+  });
+  document.getElementById('search-summary').textContent = `${filtered.length}건 검색됨`;
+  document.getElementById('search-list').innerHTML = filtered.length === 0
+    ? '<div class="empty-state">조건에 맞는 기록이 없어요.</div>'
+    : filtered.map(renderRecordCard).join('');
+}
+
+function clearSearch() {
+  ['search-keyword','search-from','search-to'].forEach(id => document.getElementById(id).value = '');
+  ['search-category','search-defect','search-cause'].forEach(id => document.getElementById(id).value = '');
+  renderSearch();
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('section-' + tab).classList.add('active');
+  if (tab === 'stats') renderStats();
+  if (tab === 'search') { updateFilterOptions(); renderSearch(); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderStats() {
+  const totalDefects = records.reduce((s, r) => s + r.defectCount, 0);
+  const totalItems = records.reduce((s, r) => s + r.total, 0);
+  document.getElementById('stat-total').textContent = records.length;
+  document.getElementById('stat-defects').textContent = totalDefects;
+  document.getElementById('stat-rate').textContent = totalItems > 0 ? Math.round(totalDefects / totalItems * 100) + '%' : '0%';
+  const catMap = {}, defMap = {}, causeMap = {};
+  records.forEach(r => {
+    if (r.category) catMap[r.category] = (catMap[r.category] || 0) + r.defectCount;
+    if (r.defect) defMap[r.defect] = (defMap[r.defect] || 0) + 1;
+    if (r.cause) causeMap[r.cause] = (causeMap[r.cause] || 0) + 1;
+  });
+  const topDef = Object.entries(defMap).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('stat-top').textContent = topDef ? topDef[0] : '-';
+  const COLORS = ['#1D9E75','#5DCAA5','#378ADD','#85B7EB','#D85A30','#F0997B','#BA7517','#EF9F27','#888780'];
+  if (catChart) catChart.destroy();
+  catChart = new Chart(document.getElementById('chart-category'), { type:'bar', data:{ labels:Object.keys(catMap), datasets:[{ data:Object.values(catMap), backgroundColor:'#5DCAA5', borderRadius:4 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+  if (defChart) defChart.destroy();
+  defChart = new Chart(document.getElementById('chart-defect'), { type:'doughnut', data:{ labels:Object.keys(defMap), datasets:[{ data:Object.values(defMap), backgroundColor:COLORS.slice(0, Object.keys(defMap).length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 }, boxWidth:10, padding:8 } } } } });
+  if (causeChart) causeChart.destroy();
+  const causeH = Math.max(180, Object.keys(causeMap).length * 36 + 40);
+  document.getElementById('cause-chart-wrap').style.height = causeH + 'px';
+  causeChart = new Chart(document.getElementById('chart-cause'), { type:'bar', data:{ labels:Object.keys(causeMap), datasets:[{ data:Object.values(causeMap), backgroundColor:'#378ADD', borderRadius:4 }] }, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ppc_journal_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function importData() { document.getElementById('import-file').click(); }
+
+function handleImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) { alert('올바른 형식이 아닙니다.'); return; }
+      if (confirm(`${imported.length}건을 가져올까요? 기존 데이터에 병합됩니다.`)) {
+        const existing = new Set(records.map(r => r.id));
+        const newOnes = imported.filter(r => !existing.has(r.id));
+        records = [...records, ...newOnes].sort((a, b) => b.date.localeCompare(a.date));
+        save(); renderRecords(); alert(`${newOnes.length}건 가져왔습니다.`);
+      }
+    } catch(err) { alert('파일을 읽는 중 오류가 발생했습니다.'); }
+  };
+  reader.readAsText(file); e.target.value = '';
+}
+
+init();
+</script>
+</body>
+</html>
